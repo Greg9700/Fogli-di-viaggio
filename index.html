@@ -1,8 +1,191 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Croce Verde Mestre - Foglio Viaggio</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root { --primary: #00875a; --bg: #f4f5f7; --text: #172b4d; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        .card { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); box-sizing: border-box; margin-bottom: 20px; }
+        h2, h3 { text-align: center; color: var(--primary); margin-top: 0; }
+        h2 { border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        .section-title { font-weight: bold; margin: 20px 0 10px 0; color: #5e6c84; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-size: 14px; font-weight: 500; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #cccccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; background: white; }
+        input:disabled { background: #f4f5f7; color: #7a869a; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .checkbox-group input { width: auto; }
+        button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .btn-secondary { background: #5e6c84; margin-top: 5px; }
+        .badge-crew { background: #deebff; padding: 10px; border-radius: 6px; font-size: 14px; margin-bottom: 15px; border-left: 4px solid #0052cc; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="card" id="crew-setup-card">
+    <h3>Inizio Turno - Equipaggio</h3>
+    <p style="font-size:14px; color:#5e6c84; text-align:center;">Imposta l'equipaggio una volta sola. Rimarrà memorizzato per tutto il turno.</p>
+    <form id="crew-form">
+        <div class="form-group"><label>Autista</label><input type="text" id="setup_autista" required placeholder="Cognome e Nome"></div>
+        <div class="form-group"><label>Soccorritore 1</label><input type="text" id="setup_soccorritore_1" placeholder="Cognome e Nome"></div>
+        <div class="form-group"><label>Soccorritore 2</label><input type="text" id="setup_soccorritore_2" placeholder="Cognome e Nome"></div>
+        <button type="submit">Inizia Turno</button>
+    </form>
+</div>
+
+<div class="card hidden" id="main-form-card">
+    <h2>Croce Verde Mestre</h2>
+    
+    <div class="badge-crew">
+        <strong>Equipaggio Attivo:</strong> <span id="crew-display"></span>
+        <button class="btn-secondary" style="padding:5px 10px; font-size:12px; width:auto; float:right; margin:0;" onclick="clearCrew()">Cambia Crew</button>
+        <div style="clear:both;"></div>
+    </div>
+
+    <form id="sheet-form">
+        <div class="section-title">Testata Servizio</div>
+        <div class="form-group">
+            <label>Tipo Convenzione / Servizio</label>
+            <select id="tipo_servizio" required>
+                <option value="ULSS 3">ULSS 3</option>
+                <option value="Sede">Sede</option>
+                <option value="Privati">Privati</option>
+                <option value="Urg. N.">Urg. N.</option>
+                <option value="Ass. Gare">Ass. Gare</option>
+            </select>
+        </div>
+        <div class="grid-2">
+            <div class="form-group"><label>Data</label><input type="date" id="data_servizio" required></div>
+            <div class="form-group"><label>Viaggio N.</label><input type="text" id="viaggio_n"></div>
+        </div>
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Mezzo N.</label>
+                <select id="mezzo_n" required onchange="aggiornaTarga()">
+                    <option value="">Seleziona...</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Targa Ambulanza</label><input type="text" id="ambulanza_targa" disabled placeholder="Targa Autocompilata"></div>
+        </div>
+
+        <div class="section-title">Dati Nominativi Paziente</div>
+        <div class="form-group">
+            <label>Cognome e Nome Paziente</label>
+            <input type="text" id="nome_paziente" required placeholder="Es. Rossi Mario">
+        </div>
+        <div class="grid-2">
+            <div class="form-group"><label>Da (Luogo)</label><input type="text" id="tratta_da" required></div>
+            <div class="form-group"><label>Reparto</label><input type="text" id="reparto_da"></div>
+        </div>
+        <div class="grid-2">
+            <div class="form-group"><label>A (Luogo)</label><input type="text" id="tratta_a" required></div>
+            <div class="form-group"><label>Reparto</label><input type="text" id="reparto_a"></div>
+        </div>
+
+        <div class="section-title">Condizioni di Trasporto</div>
+        <div class="form-group">
+            <label>Modalità</label>
+            <select id="condizione_paziente">
+                <option value="Deambulante">Deambulante</option>
+                <option value="Con sedia">Con sedia</option>
+                <option value="Barellato">Barellato</option>
+                <option value="Autolettiga attrezzata">Autolettiga attrezzata</option>
+            </select>
+        </div>
+        <div class="form-group"><label>Accompagnato dal Sig.</label><input type="text" id="accompagnato_da" placeholder="Cognome e Nome o Nessuno"></div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="personale_sanitario">
+            <label for="personale_sanitario">Presenza Personale Sanitario</label>
+        </div>
+
+        <div class="section-title">Tempi e Chilometri</div>
+        <div class="grid-2">
+            <div class="form-group"><label>Ora Partenza</label><input type="time" id="ora_partenza" required></div>
+            <div class="form-group"><label>Ora Arrivo</label><input type="time" id="ora_arrivo"></div>
+        </div>
+        <div class="form-group"><label>Sosta Ore</label><input type="time" id="ora_sosta"></div>
+        <div class="grid-2">
+            <div class="form-group"><label>KM alla Partenza</label><input type="number" id="km_partenza" required></div>
+            <div class="form-group"><label>KM all'Arrivo</label><input type="number" id="km_arrivo" required></div>
+        </div>
+
+        <button type="submit">Invia Foglio di Viaggio</button>
+    </form>
+</div>
+
+<script>
+    const SUPABASE_URL = "https://qiaueopprplmejdzkmyh.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpYXVlb3BwcnBsbWVqZHprbXloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxOTQ3NDksImV4cCI6MjA5Nzc3MDc0OY0.v0IeRXxftw-v_BFp4t54CkzDxwFz9oMLqeyIAOzPyR4";
+    const CHIAVE_SEGRETA_GDPR = "CroceVerdeMestreSegreta2026!"; 
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let listaMezzi = [];
+
+    // Gestione Turno in Cache Locale
+    window.addEventListener('DOMContentLoaded', () => {
+        checkCrew();
+        caricaMezzi();
+        document.getElementById('data_servizio').valueAsDate = new Date();
+    });
+
+    function checkCrew() {
+        const autista = localStorage.getItem('cv_autista');
+        if (autista) {
+            document.getElementById('crew-setup-card').classList.add('hidden');
+            document.getElementById('main-form-card').classList.remove('hidden');
+            document.getElementById('crew-display').innerText = `${autista} (Autista) ${localStorage.getItem('cv_soc1') ? ' - ' + localStorage.getItem('cv_soc1') : ''}`;
+        } else {
+            document.getElementById('crew-setup-card').classList.remove('hidden');
+            document.getElementById('main-form-card').classList.add('hidden');
+        }
+    }
+
+    document.getElementById('crew-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        localStorage.setItem('cv_autista', document.getElementById('setup_autista').value);
+        localStorage.setItem('cv_soc1', document.getElementById('setup_soccorritore_1').value);
+        localStorage.setItem('cv_soc2', document.getElementById('setup_soccorritore_2').value);
+        checkCrew();
+    });
+
+    function clearCrew() {
+        localStorage.clear();
+        checkCrew();
+    }
+
+    // Scarica dinamicamente i mezzi dal database
+    async function caricaMezzi() {
+        const { data, error } = await supabaseClient.from('mezzi').select('*').order('numero_mezzo');
+        if (!error && data) {
+            listaMezzi = data;
+            const select = document.getElementById('mezzo_n');
+            select.innerHTML = '<option value="">Seleziona...</option>';
+            data.forEach(m => {
+                let opt = document.createElement('option');
+                opt.value = m.numero_mezzo;
+                opt.textContent = `Mezzo ${m.numero_mezzo}`;
+                select.appendChild(opt);
+            });
+        }
+    }
+
+    function aggiornaTarga() {
+        const numSelezionato = document.getElementById('mezzo_n').value;
+        const mezzo = listaMezzi.find(m => m.numero_mezzo === numSelezionato);
+        document.getElementById('ambulanza_targa').value = mezzo ? mezzo.targa : '';
+    }
+
     // Invio Dati del Singolo Viaggio (Versione Ottimizzata con Diagnostica)
     document.getElementById('sheet-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // Recuperiamo il pulsante per dare un feedback visivo immediato
+        // Feedback visivo immediato sul pulsante
         const submitBtn = e.target.querySelector('button[type="submit"]');
         const originalBtnText = submitBtn.textContent;
         
@@ -51,7 +234,7 @@
                 soccorritore_2: localStorage.getItem('cv_soc2')
             };
 
-            // Eseguiamo l'inserimento nel database
+            // Inserimento nel database
             const { error } = await supabaseClient.from('fogli_viaggio').insert([rigaViaggio]);
 
             if (error) {
@@ -64,12 +247,15 @@
             }
 
         } catch (err) {
-            // Questo intercetta i blocchi silenziosi del browser
+            // Questo blocca le eccezioni "fantasma" del browser
             alert("💥 Errore imprevisto del browser: " + err.message);
             console.error(err);
         } finally {
-            // Ripristina sempre il pulsante alla fine del processo
+            // Ripristina sempre lo stato del pulsante
             submitBtn.disabled = false;
             submitBtn.textContent = originalBtnText;
         }
     });
+</script>
+</body>
+</html>
