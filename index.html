@@ -159,19 +159,31 @@
         checkCrew();
     }
 
-    // Scarica dinamicamente i mezzi dal database
+    // Scarica dinamicamente i mezzi dal database con controllo errori attivo
     async function caricaMezzi() {
-        const { data, error } = await supabaseClient.from('mezzi').select('*').order('numero_mezzo');
-        if (!error && data) {
-            listaMezzi = data;
-            const select = document.getElementById('mezzo_n');
-            select.innerHTML = '<option value="">Seleziona...</option>';
-            data.forEach(m => {
-                let opt = document.createElement('option');
-                opt.value = m.numero_mezzo;
-                opt.textContent = `Mezzo ${m.numero_mezzo}`;
-                select.appendChild(opt);
-            });
+        try {
+            const { data, error } = await supabaseClient.from('mezzi').select('*').order('numero_mezzo');
+            
+            if (error) {
+                alert("❌ Errore nel caricamento dei mezzi da Supabase: " + error.message);
+                return;
+            }
+            
+            if (data && data.length > 0) {
+                listaMezzi = data;
+                const select = document.getElementById('mezzo_n');
+                select.innerHTML = '<option value="">Seleziona...</option>';
+                data.forEach(m => {
+                    let opt = document.createElement('option');
+                    opt.value = m.numero_mezzo;
+                    opt.textContent = `Mezzo ${m.numero_mezzo}`;
+                    select.appendChild(opt);
+                });
+            } else {
+                alert("⚠️ Supabase ha risposto correttamente, ma la tabella 'mezzi' risulta completamente vuota.");
+            }
+        } catch (err) {
+            alert("💥 Impossibile contattare Supabase per i mezzi: " + err.message);
         }
     }
 
@@ -181,11 +193,10 @@
         document.getElementById('ambulanza_targa').value = mezzo ? mezzo.targa : '';
     }
 
-    // Invio Dati del Singolo Viaggio (Versione Ottimizzata con Diagnostica)
+    // Invio Dati del Singolo Viaggio
     document.getElementById('sheet-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // Feedback visivo immediato sul pulsante
         const submitBtn = e.target.querySelector('button[type="submit"]');
         const originalBtnText = submitBtn.textContent;
         
@@ -205,7 +216,6 @@
             const nomeInChiaro = document.getElementById('nome_paziente').value;
             const accompagnatoreInChiaro = document.getElementById('accompagnato_da').value || "Nessuno";
 
-            // Cifratura GDPR
             const nomeCriptato = CryptoJS.AES.encrypt(nomeInChiaro, CHIAVE_SEGRETA_GDPR).toString();
             const accompagnatoreCriptato = CryptoJS.AES.encrypt(accompagnatoreInChiaro, CHIAVE_SEGRETA_GDPR).toString();
 
@@ -234,7 +244,6 @@
                 soccorritore_2: localStorage.getItem('cv_soc2')
             };
 
-            // Inserimento nel database
             const { error } = await supabaseClient.from('fogli_viaggio').insert([rigaViaggio]);
 
             if (error) {
@@ -247,11 +256,9 @@
             }
 
         } catch (err) {
-            // Questo blocca le eccezioni "fantasma" del browser
             alert("💥 Errore imprevisto del browser: " + err.message);
             console.error(err);
         } finally {
-            // Ripristina sempre lo stato del pulsante
             submitBtn.disabled = false;
             submitBtn.textContent = originalBtnText;
         }
