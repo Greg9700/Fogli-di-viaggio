@@ -30,13 +30,11 @@
 
 <div class="card" id="crew-setup-card">
     <h3>Inizio Turno - Equipaggio</h3>
-    <p style="font-size:14px; color:#5e6c84; text-align:center;">Imposta l'equipaggio una volta sola. Rimarrà memorizzato per tutto il turno.</p>
-    <form id="crew-form">
-        <div class="form-group"><label>Autista</label><input type="text" id="setup_autista" required placeholder="Cognome e Nome"></div>
-        <div class="form-group"><label>Soccorritore 1</label><input type="text" id="setup_soccorritore_1" placeholder="Cognome e Nome"></div>
-        <div class="form-group"><label>Soccorritore 2</label><input type="text" id="setup_soccorritore_2" placeholder="Cognome e Nome"></div>
-        <button type="submit">Inizia Turno</button>
-    </form>
+    <p style="font-size:14px; color:#5e6c84; text-align:center;">Imposta l'equipaggio una volta sola per tutto il turno.</p>
+    <div class="form-group"><label>Autista</label><input type="text" id="setup_autista" placeholder="Cognome e Nome"></div>
+    <div class="form-group"><label>Soccorritore 1</label><input type="text" id="setup_soccorritore_1" placeholder="Cognome e Nome"></div>
+    <div class="form-group"><label>Soccorritore 2</label><input type="text" id="setup_soccorritore_2" placeholder="Cognome e Nome"></div>
+    <button type="button" onclick="salvaTurnoIniziale()">Inizia Turno</button>
 </div>
 
 <div class="card hidden" id="main-form-card">
@@ -120,7 +118,6 @@
 </div>
 
 <script>
-    // Configurazione Supabase - GIA' INSERITA E PRONTA
     const SUPABASE_URL = "https://qiaueopprplmejdzkmyh.supabase.co";
     const SUPABASE_KEY = "sb_publishable_68cWn3RYSl99hekpY61OJ-g_3pZO8uJ3";
     const CHIAVE_SEGRETA_GDPR = "CroceVerdeMestreSegreta2026!"; 
@@ -128,7 +125,6 @@
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let listaMezzi = [];
 
-    // Gestione Turno in Cache Locale
     window.addEventListener('DOMContentLoaded', () => {
         checkCrew();
         caricaMezzi();
@@ -147,20 +143,23 @@
         }
     }
 
-    document.getElementById('crew-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        localStorage.setItem('cv_autista', document.getElementById('setup_autista').value);
+    function salvaTurnoIniziale() {
+        const autistaVal = document.getElementById('setup_autista').value.trim();
+        if(!autistaVal) {
+            alert("Inserisci almeno il nome dell'Autista per iniziare il turno.");
+            return;
+        }
+        localStorage.setItem('cv_autista', autistaVal);
         localStorage.setItem('cv_soc1', document.getElementById('setup_soccorritore_1').value);
         localStorage.setItem('cv_soc2', document.getElementById('setup_soccorritore_2').value);
         checkCrew();
-    });
+    }
 
     function clearCrew() {
         localStorage.clear();
         checkCrew();
     }
 
-    // Scarica dinamicamente i mezzi dal database
     async function caricaMezzi() {
         try {
             const { data, error } = await supabase.from('mezzi').select('*').order('numero_mezzo');
@@ -184,7 +183,6 @@
         document.getElementById('ambulanza_targa').value = mezzo ? mezzo.targa : '';
     }
 
-    // Invio Dati del Singolo Viaggio
     document.getElementById('sheet-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -195,7 +193,6 @@
         const nomeInChiaro = document.getElementById('nome_paziente').value;
         const accompagnatoreInChiaro = document.getElementById('accompagnato_da').value || "Nessuno";
 
-        // Cifratura GDPR
         const nomeCriptato = CryptoJS.AES.encrypt(nomeInChiaro, CHIAVE_SEGRETA_GDPR).toString();
         const accompagnatoreCriptato = CryptoJS.AES.encrypt(accompagnatoreInChiaro, CHIAVE_SEGRETA_GDPR).toString();
 
@@ -214,27 +211,4 @@
             accompagnato_da: accompagnatoreCriptato,
             personale_sanitario: document.getElementById('personale_sanitario').checked,
             ora_partenza: document.getElementById('ora_partenza').value,
-            ora_arrivo: document.getElementById('ora_arrivo').value,
-            ora_sosta: document.getElementById('ora_sosta').value,
-            km_partenza: kmP,
-            km_arrivo: kmA,
-            km_totali: kmA - kmP,
-            autista: localStorage.getItem('cv_autista'),
-            soccorritore_1: localStorage.getItem('cv_soc1'),
-            soccorritore_2: localStorage.getItem('cv_soc2')
-        };
-
-        const { error } = await supabase.from('fogli_viaggio').insert([rigaViaggio]);
-
-        if (error) {
-            alert("Errore nel salvataggio: " + error.message);
-        } else {
-            alert("✅ Viaggio inviato correttamente!");
-            document.getElementById('sheet-form').reset();
-            document.getElementById('data_servizio').valueAsDate = new Date();
-            document.getElementById('ambulanza_targa').value = '';
-        }
-    });
-</script>
-</body>
-</html>
+            ora_arrivo: document.getElementById('ora
