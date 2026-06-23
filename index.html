@@ -122,11 +122,12 @@
     const SUPABASE_KEY = "sb_publishable_68cWn3RYSl99hekpY61OJ-g_3pZO8uJ3";
     const CHIAVE_SEGRETA_GDPR = "CroceVerdeMestreSegreta2026!"; 
 
-    // Risolto l'errore di inizializzazione qui sotto
-    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let db;
     let listaMezzi = [];
 
     window.addEventListener('DOMContentLoaded', () => {
+        // Inizializzazione pulita della libreria globale
+        db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         checkCrew();
         caricaMezzi();
         document.getElementById('data_servizio').valueAsDate = new Date();
@@ -164,7 +165,15 @@
     async function caricaMezzi() {
         try {
             const { data, error } = await db.from('mezzi').select('*').order('numero_mezzo');
-            if (!error && data) {
+            if (error) {
+                alert("Errore Supabase nel caricamento mezzi: " + error.message);
+                return;
+            }
+            if (data && data.length === 0) {
+                alert("Attenzione: La tabella 'mezzi' su Supabase è vuota!");
+                return;
+            }
+            if (data) {
                 listaMezzi = data;
                 const select = document.getElementById('mezzo_n');
                 select.innerHTML = '<option value="">Seleziona...</option>';
@@ -175,7 +184,9 @@
                     select.appendChild(opt);
                 });
             }
-        } catch(err) { console.error(err); }
+        } catch(err) { 
+            alert("Errore generico di rete: " + err.message);
+        }
     }
 
     function aggiornaTarga() {
