@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Croce Verde Mestre - Foglio Viaggio Cifrato</title>
+    <!-- Libreria per il Cloud -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Libreria per la Crittografia Sicura GDPR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root { --primary: #00875a; --bg: #f4f5f7; --text: #172b4d; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; display: flex; justify-content: center; }
+        .card { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); box-sizing: border-box; }
+        h2 { text-align: center; color: var(--primary); margin-top: 0; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        .section-title { font-weight: bold; margin: 20px 0 10px 0; color: #5e6c84; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-size: 14px; font-weight: 500; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #cccccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .checkbox-group input { width: auto; }
+        button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .gdpr-notice { background: #e3fcef; padding: 10px; border-radius: 6px; font-size: 12px; color: #006644; margin-top: 15px; line-height: 1.4; text-align: center;}
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Croce Verde Mestre</h2>
+    <form id="sheet-form">
+        
+        <div class="section-title">Testata Servizio</div>
+        <div class="form-group">
+            <label>Tipo Convenzione / Servizio</label>
+            <select id="tipo_servizio" required>
+                <option value="ULSS 3">ULSS 3</option>
+                <option value="Sede">Sede</option>
+                <option value="Privati">Privati</option>
+                <option value="Urg. N.">Urg. N.</option>
+                <option value="Ass. Gare">Ass. Gare</option>
+            </select>
+        </div>
+        <div class="grid-2">
+            <div class="form-group"><label>Data</label><input type="date" id="data_servizio" required></div>
+            <div class="form-group"><label>Viaggio N.</label><input type="text" id="viaggio_n"></div>
+        </div>
+        <div class="grid-2">
+            <div class="form-group"><label>Targa Ambulanza</label><input type="text" id="ambulanza_targa" placeholder="Targa"></div>
+            <div class="form-group"><label>Mezzo N.</label><input type="text" id="mezzo_n"></div>
+        </div>
+
+        <div class="section-title">Dati Nominativi Paziente</div>
+        <div class="form-group">
+            <label>Cognome e Nome Paziente</label>
+            <input type="text" id="nome_paziente" required placeholder="Es. Rossi Mario">
+        </div>
+        <div class="grid-2">
+            <div class="form-group"><label>Da (Luogo)</label><input type="text" id="tratta_da" required></div>
+            <div class="form-group"><label>Reparto</label><input type="text" id="reparto_da"></div>
+        </div>
+        <div class="grid-2">
+            <div class="form-group"><label>A (Luogo)</label><input type="text" id="tratta_a" required></div>
+            <div class="form-group"><label>Reparto</label><input type="text" id="reparto_a"></div>
+        </div>
+
+        <div class="section-title">Condizioni di Trasporto</div>
+        <div class="form-group">
+            <label>Modalità</label>
+            <select id="condizione_paziente">
+                <option value="Deambulante">Deambulante</option>
+                <option value="Con sedia">Con sedia</option>
+                <option value="Barellato">Barellato</option>
+                <option value="Autolettiga attrezzata">Autolettiga attrezzata</option>
+            </select>
+        </div>
+        <div class="form-group"><label>Accompagnato dal Sig.</label><input type="text" id="accompagnato_da" placeholder="Cognome e Nome o Nessuno"></div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="personale_sanitario">
+            <label for="personale_sanitario">Presenza Personale Sanitario</label>
+        </div>
+
+        <div class="section-title">Tempi e Chilometri</div>
+        <div class="grid-2">
+            <div class="form-group"><label>Ora Partenza</label><input type="time" id="ora_partenza" required></div>
+            <div class="form-group"><label>Ora Arrivo</label><input type="time" id="ora_arrivo"></div>
+        </div>
+        <div class="form-group"><label>Sosta Ore</label><input type="time" id="ora_sosta"></div>
+        <div class="grid-2">
+            <div class="form-group"><label>KM alla Partenza</label><input type="number" id="km_partenza" required></div>
+            <div class="form-group"><label>KM all'Arrivo</label><input type="number" id="km_arrivo" required></div>
+        </div>
+
+        <div class="section-title">Equipaggio</div>
+        <div class="form-group"><label>Autista</label><input type="text" id="autista" required></div>
+        <div class="grid-2">
+            <div class="form-group"><label>Soccorritore 1</label><input type="text" id="soccorritore_1"></div>
+            <div class="form-group"><label>Soccorritore 2</label><input type="text" id="soccorritore_2"></div>
+        </div>
+
+        <div class="gdpr-notice">
+            🔒 **Cifratura Attiva:** I dati nominativi vengono criptati sul dispositivo prima del salvataggio cloud.
+        </div>
+
+        <button type="submit">Invia Foglio di Viaggio</button>
+    </form>
+</div>
+
+<script>
+    // Configura con i tuoi dati Supabase
+    const SUPABASE_URL = "https://IL_TUO_ID_SUPABASE.supabase.co";
+    const SUPABASE_KEY = "LA_TUA_ANON_KEY_SUPABASE";
+    
+    // 🔑 PASSWORD DI CIFRATURA (Scegline una complessa per l'associazione)
+    // Cambia questa parola con una chiave segreta concordata con la segreteria
+    const CHIAVE_SEGRETA_GDPR = "CroceVerdeMestreSegreta2026!"; 
+
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    document.getElementById('data_servizio').valueAsDate = new Date();
+
+    document.getElementById('sheet-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const kmP = parseInt(document.getElementById('km_partenza').value);
+        const kmA = parseInt(document.getElementById('km_arrivo').value);
+        if(kmA < kmP) { alert("I KM all'arrivo non possono essere inferiori a quelli di partenza."); return; }
+
+        // Prendiamo i dati sensibili in chiaro inseriti dall'autista
+        const nomeInChiaro = document.getElementById('nome_paziente').value;
+        const accompagnatoreInChiaro = document.getElementById('accompagnato_da').value || "Nessuno";
+
+        // 🔐 CRITTOGRAFIA LATO CLIENT: Trasformiamo i nomi in codici illeggibili
+        const nomeCriptato = CryptoJS.AES.encrypt(nomeInChiaro, CHIAVE_SEGRETA_GDPR).toString();
+        const accompagnatoreCriptato = CryptoJS.AES.encrypt(accompagnatoreInChiaro, CHIAVE_SEGRETA_GDPR).toString();
+
+        const rigaViaggio = {
+            tipo_servizio: document.getElementById('tipo_servizio').value,
+            data_servizio: document.getElementById('data_servizio').value,
+            viaggio_n: document.getElementById('viaggio_n').value,
+            ambulanza_targa: document.getElementById('ambulanza_targa').value,
+            mezzo_n: document.getElementById('mezzo_n').value,
+            
+            // Sul database salviamo solo le versioni indecifrabili
+            nome_paziente: nomeCriptato, 
+            accompagnatore: accompagnatoreCriptato,
+
+            condizione_paziente: document.getElementById('condizione_paziente').value,
+            personale_sanitario: document.getElementById('personale_sanitario').checked,
+            ora_partenza: document.getElementById('ora_partenza').value,
+            ora_arrivo: document.getElementById('ora_arrivo').value,
+            ora_sosta: document.getElementById('ora_sosta').value,
+            km_partenza: kmP,
+            km_arrivo: kmA,
+            km_totali: kmA - kmP,
+            autista: document.getElementById('autista').value,
+            soccorritore_1: document.getElementById('soccorritore_1').value,
+            soccorritore_2: document.getElementById('soccorritore_2').value
+        };
+
+        const { error } = await supabase.from('fogli_viaggio').insert([rigaViaggio]);
+
+        if (error) {
+            alert("Errore nel salvataggio: " + error.message);
+        } else {
+            alert("✅ Foglio salvato e crittografato sul cloud!");
+            document.getElementById('sheet-form').reset();
+            document.getElementById('data_servizio').valueAsDate = new Date();
+        }
+    });
+</script>
+</body>
+</html>
